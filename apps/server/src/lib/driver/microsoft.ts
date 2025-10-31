@@ -17,6 +17,7 @@ import { Client } from '@microsoft/microsoft-graph-client';
 import type { MailManager, ManagerConfig } from './types';
 import { getContext } from 'hono/context-storage';
 import type { CreateDraftData } from '../schemas';
+import { deserializeFiles } from '../schemas';
 import type { HonoContext } from '../../ctx';
 import * as he from 'he';
 
@@ -696,8 +697,9 @@ export class OutlookMailManager implements MailManager {
         }
 
         if (data.attachments && data.attachments.length > 0) {
+          const deserializedFiles = await deserializeFiles(data.attachments);
           const regularAttachments = await Promise.all(
-            data.attachments.map(async (file) => {
+            deserializedFiles.map(async (file) => {
               const arrayBuffer = await file.arrayBuffer();
               const buffer = Buffer.from(arrayBuffer);
               const base64Content = buffer.toString('base64');
@@ -1179,10 +1181,18 @@ export class OutlookMailManager implements MailManager {
       }
     }
 
-    if (attachments?.length > 0) {
+    if (attachments && attachments.length > 0) {
       const regularAttachments = await Promise.all(
         attachments.map(async (file) => {
-          const arrayBuffer = await file.arrayBuffer();
+          // Convert serialized file to File object
+          const fileBuffer = Buffer.from(file.base64, 'base64');
+          const blob = new Blob([fileBuffer], { type: file.type });
+          const fileObj = new File([blob], file.name, {
+            type: file.type,
+            lastModified: file.lastModified,
+          });
+          
+          const arrayBuffer = await fileObj.arrayBuffer();
           const buffer = Buffer.from(arrayBuffer);
           const base64Content = buffer.toString('base64');
 
@@ -1233,9 +1243,61 @@ export class OutlookMailManager implements MailManager {
       bcc,
       subject: subject ? he.decode(subject).trim() : '',
       content,
-      rawMessage: draftMessage, // Include raw Graph message
+      rawMessage: {
+        internalDate: draftMessage.receivedDateTime || draftMessage.sentDateTime || null,
+      },
     };
   }
+  public getMessageAttachments(messageId: string) {
+    return this.withErrorHandler(
+      'getMessageAttachments',
+      async () => {
+        const message = await this.graphClient.api(`/me/messages/${messageId}`).get();
+        const attachments = message.attachments || [];
+        
+        const result = await Promise.all(
+          attachments.map(async (attachment: any) => {
+            if (!attachment.id) return null;
+            
+            const attachmentData = await this.getAttachment(messageId, attachment.id);
+            return {
+              filename: attachment.name || '',
+              mimeType: attachment.contentType || 'application/octet-stream',
+              size: attachment.size || 0,
+              attachmentId: attachment.id,
+              headers: [],
+              body: attachmentData || '',
+            };
+          }),
+        );
+        
+        return result.filter((item): item is NonNullable<typeof item> => item !== null);
+      },
+      { messageId },
+    );
+  }
+
+  public getRawEmail(messageId: string) {
+    return this.withErrorHandler(
+      'getRawEmail',
+      async () => {
+        const message = await this.graphClient
+          .api(`/me/messages/${messageId}`)
+          .select('internetMessageHeaders')
+          .get();
+        
+        // Microsoft Graph doesn't provide raw email directly
+        // We need to reconstruct it from the message parts
+        // For now, return a basic representation
+        const headers = message.internetMessageHeaders || [];
+        const headerString = headers.map((h: any) => `${h.name}: ${h.value}`).join('\r\n');
+        
+        return `${headerString}\r\n\r\n${message.body?.content || ''}`;
+      },
+      { messageId },
+    );
+  }
+
   private async withErrorHandler<T>(
     operation: string,
     fn: () => Promise<T> | T,

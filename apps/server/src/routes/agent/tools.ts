@@ -8,6 +8,8 @@ import { openai } from '@ai-sdk/openai';
 import { generateText, tool } from 'ai';
 import { Tools } from '../../types';
 import { env } from '../../env';
+import { getFlowiseService } from '../../lib/flowise-service';
+import { getVectorizeService } from '../../lib/vectorize-service';
 import { z } from 'zod';
 
 type ModelTypes = 'summarize' | 'general' | 'chat' | 'vectorize';
@@ -24,7 +26,8 @@ export const getEmbeddingVector = async (
   gatewayId: 'vectorize-save' | 'vectorize-load',
 ) => {
   try {
-    const embeddingResponse = await env.AI.run(
+    const flowiseService = getFlowiseService();
+    const embeddingResponse = await flowiseService.run(
       models.vectorize,
       { text },
       {
@@ -132,7 +135,8 @@ const getThreadSummary = (connectionId: string) =>
       id: z.string().describe('The ID of the email thread to get the summary of'),
     }),
     execute: async ({ id }) => {
-      const response = await env.VECTORIZE.getByIds([id]);
+      const vectorizeService = getVectorizeService();
+      const response = await vectorizeService.getByIds([id]);
       let thread: IGetThreadResponse | null = null;
       try {
         const { result } = await getThread(connectionId, id);
@@ -146,7 +150,8 @@ const getThreadSummary = (connectionId: string) =>
         if (result.connection !== connectionId) {
           return null;
         }
-        const shortResponse = await env.AI.run('@cf/facebook/bart-large-cnn', {
+        const flowiseService = getFlowiseService();
+        const shortResponse = await flowiseService.run('@cf/facebook/bart-large-cnn', {
           input_text: result.summary,
         });
         return {

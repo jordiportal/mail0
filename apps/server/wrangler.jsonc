@@ -13,9 +13,6 @@
           "fallthrough": true,
         },
       ],
-      "ai": {
-        "binding": "AI",
-      },
       "vectorize": [
         {
           "binding": "VECTORIZE",
@@ -182,6 +179,10 @@
         "DD_API_KEY": "",
         "DD_APP_KEY": "",
         "DD_SITE": "datadoghq.com",
+        "FLOWISE_BASE_URL": "http://192.168.7.101:3002",
+        "FLOWISE_SUMMARY_ENDPOINT": "74ebdc4c-481c-429c-b528-1c993c5586ca",
+        "FLOWISE_EMBEDDING_ENDPOINT": "74ebdc4c-481c-429c-b528-1c993c5586ca",
+        "FLOWISE_RAG_ENDPOINT": "74ebdc4c-481c-429c-b528-1c993c5586ca",
       },
       "kv_namespaces": [
         {
@@ -236,9 +237,6 @@
       ],
       "triggers": {
         "crons": ["0 0 * * *", "0 * * * *"],
-      },
-      "ai": {
-        "binding": "AI",
       },
       "vectorize": [
         {
@@ -403,6 +401,10 @@
         "DD_API_KEY": "",
         "DD_APP_KEY": "",
         "DD_SITE": "datadoghq.com",
+        "FLOWISE_BASE_URL": "http://192.168.7.101:3002",
+        "FLOWISE_SUMMARY_ENDPOINT": "74ebdc4c-481c-429c-b528-1c993c5586ca",
+        "FLOWISE_EMBEDDING_ENDPOINT": "74ebdc4c-481c-429c-b528-1c993c5586ca",
+        "FLOWISE_RAG_ENDPOINT": "74ebdc4c-481c-429c-b528-1c993c5586ca",
       },
       "kv_namespaces": [
         {
@@ -464,9 +466,6 @@
           "bucket_name": "threads",
         },
       ],
-      "ai": {
-        "binding": "AI",
-      },
       "vectorize": [
         {
           "binding": "VECTORIZE",
@@ -621,6 +620,10 @@
         "DD_API_KEY": "",
         "DD_APP_KEY": "",
         "DD_SITE": "datadoghq.com",
+        "FLOWISE_BASE_URL": "http://192.168.7.101:3002",
+        "FLOWISE_SUMMARY_ENDPOINT": "74ebdc4c-481c-429c-b528-1c993c5586ca",
+        "FLOWISE_EMBEDDING_ENDPOINT": "74ebdc4c-481c-429c-b528-1c993c5586ca",
+        "FLOWISE_RAG_ENDPOINT": "74ebdc4c-481c-429c-b528-1c993c5586ca",
       },
       "kv_namespaces": [
         {

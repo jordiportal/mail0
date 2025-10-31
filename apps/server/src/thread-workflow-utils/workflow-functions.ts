@@ -26,7 +26,9 @@ import { messageToXML, threadToXML } from './workflow-utils';
 import type { WorkflowContext } from './workflow-engine';
 import { bulkDeleteKeys } from '../lib/bulk-delete';
 import { getPromptName } from '../pipelines';
-import { env } from 'cloudflare:workers';
+import { env } from '../env';
+import { getFlowiseService } from '../lib/flowise-service';
+import { getVectorizeService } from '../lib/vectorize-service';
 import { Effect } from 'effect';
 
 export type WorkflowFunction = (context: WorkflowContext) => Promise<any>;
@@ -62,7 +64,12 @@ export const workflowFunctions: Record<string, WorkflowFunction> = {
   },
 
   validateResponseNeeded: async (context) => {
-    const intentResult = context.results?.get('analyze-email-intent');
+    const intentResult = context.results?.get('analyze-email-intent') as {
+      isQuestion?: boolean;
+      isRequest?: boolean;
+      isMeeting?: boolean;
+      isUrgent?: boolean;
+    } | undefined;
     if (!intentResult) {
       console.log('[WORKFLOW_FUNCTIONS] Email intent analysis not available');
       throw new Error('Email intent analysis not available');
@@ -108,7 +115,9 @@ export const workflowFunctions: Record<string, WorkflowFunction> = {
   },
 
   createDraft: async (context) => {
-    const draftContentResult = context.results?.get('generate-draft-content');
+    const draftContentResult = context.results?.get('generate-draft-content') as {
+      draftContent?: string;
+    } | undefined;
     if (!draftContentResult?.draftContent) {
       throw new Error('No draft content available');
     }
@@ -170,7 +179,8 @@ export const workflowFunctions: Record<string, WorkflowFunction> = {
     const getExistingMessagesBatch = (batch: string[]): Effect.Effect<any[], never> =>
       Effect.tryPromise(async () => {
         console.log('[WORKFLOW_FUNCTIONS] Fetching batch of', batch.length, 'message IDs');
-        return await env.VECTORIZE_MESSAGE.getByIds(batch);
+        const vectorizeService = getVectorizeService();
+        return await vectorizeService.getMessageByIds(batch);
       }).pipe(
         Effect.catchAll((error) => {
           console.log('[WORKFLOW_FUNCTIONS] Failed to fetch batch:', error);
@@ -199,7 +209,10 @@ export const workflowFunctions: Record<string, WorkflowFunction> = {
   },
 
   vectorizeMessages: async (context) => {
-    const vectorizeResult = context.results?.get('find-messages-to-vectorize');
+    const vectorizeResult = context.results?.get('find-messages-to-vectorize') as {
+      messagesToVectorize?: ParsedMessage[];
+      existingMessages?: any[];
+    } | undefined;
     if (!vectorizeResult?.messagesToVectorize) {
       console.log('[WORKFLOW_FUNCTIONS] No messages to vectorize, skipping');
       return { embeddings: [] };
@@ -243,7 +256,8 @@ export const workflowFunctions: Record<string, WorkflowFunction> = {
           { role: 'user', content: prompt },
         ];
 
-        const response = await env.AI.run('@cf/meta/llama-4-scout-17b-16e-instruct', {
+        const flowiseService = getFlowiseService();
+        const response = await flowiseService.run('@cf/meta/llama-4-scout-17b-16e-instruct', {
           messages,
         });
 
@@ -293,7 +307,17 @@ export const workflowFunctions: Record<string, WorkflowFunction> = {
   },
 
   upsertEmbeddings: async (context) => {
-    const vectorizeResult = context.results?.get('vectorize-messages');
+    const vectorizeResult = context.results?.get('vectorize-messages') as {
+      embeddings?: Array<{
+        id: string;
+        metadata: {
+          connection: string;
+          thread: string;
+          summary: string;
+        };
+        values: number[];
+      }>;
+    } | undefined;
     if (!vectorizeResult?.embeddings || vectorizeResult.embeddings.length === 0) {
       console.log('[WORKFLOW_FUNCTIONS] No embeddings to upsert');
       return { upserted: 0 };
@@ -303,7 +327,8 @@ export const workflowFunctions: Record<string, WorkflowFunction> = {
       '[WORKFLOW_FUNCTIONS] Upserting message vectors:',
       vectorizeResult.embeddings.length,
     );
-    await env.VECTORIZE_MESSAGE.upsert(vectorizeResult.embeddings);
+    const vectorizeService = getVectorizeService();
+    await vectorizeService.upsertMessages(vectorizeResult.embeddings);
     console.log('[WORKFLOW_FUNCTIONS] Successfully upserted message vectors');
 
     return { upserted: vectorizeResult.embeddings.length };
@@ -323,7 +348,8 @@ export const workflowFunctions: Record<string, WorkflowFunction> = {
 
   checkExistingSummary: async (context) => {
     console.log('[WORKFLOW_FUNCTIONS] Getting existing thread summary for:', context.threadId);
-    const threadSummary = await env.VECTORIZE.getByIds([context.threadId.toString()]);
+    const vectorizeService = getVectorizeService();
+    const threadSummary = await vectorizeService.getByIds([context.threadId.toString()]);
     if (!threadSummary.length) {
       console.log('[WORKFLOW_FUNCTIONS] No existing thread summary found');
       return { existingSummary: null };
@@ -348,7 +374,9 @@ export const workflowFunctions: Record<string, WorkflowFunction> = {
   },
 
   generateThreadSummary: async (context) => {
-    const summaryResult = context.results?.get('check-existing-summary');
+    const summaryResult = context.results?.get('check-existing-summary') as {
+      existingSummary?: { summary: string; lastMsg: string } | null;
+    } | undefined;
     const existingSummary = summaryResult?.existingSummary;
 
     const newestMessage = context.thread.messages[context.thread.messages.length - 1];
@@ -380,7 +408,9 @@ export const workflowFunctions: Record<string, WorkflowFunction> = {
   },
 
   upsertThreadSummary: async (context) => {
-    const summaryResult = context.results?.get('generate-thread-summary');
+    const summaryResult = context.results?.get('generate-thread-summary') as {
+      summary?: string;
+    } | undefined;
     if (!summaryResult?.summary) {
       console.log('[WORKFLOW_FUNCTIONS] No summary generated for thread');
       return { upserted: false };
@@ -394,7 +424,8 @@ export const workflowFunctions: Record<string, WorkflowFunction> = {
 
     console.log('[WORKFLOW_FUNCTIONS] Upserting thread vector');
     const newestMessage = context.thread.messages[context.thread.messages.length - 1];
-    await env.VECTORIZE.upsert([
+    const vectorizeService = getVectorizeService();
+    await vectorizeService.upsert([
       {
         id: context.threadId.toString(),
         metadata: {
@@ -446,9 +477,15 @@ export const workflowFunctions: Record<string, WorkflowFunction> = {
   },
 
   generateLabelSuggestions: async (context) => {
-    const summaryResult = context.results?.get('generate-thread-summary');
-    const userLabelsResult = context.results?.get('get-user-labels');
-    const userTopicsResult = context.results?.get('get-user-topics');
+    const summaryResult = context.results?.get('generate-thread-summary') as {
+      summary?: string;
+    } | undefined;
+    const userLabelsResult = context.results?.get('get-user-labels') as {
+      userAccountLabels?: any[];
+    } | undefined;
+    const userTopicsResult = context.results?.get('get-user-topics') as {
+      userTopics?: { name: string; usecase: string }[];
+    } | undefined;
 
     if (!summaryResult?.summary) {
       console.log('[WORKFLOW_FUNCTIONS] No summary available for label generation');
@@ -497,7 +534,8 @@ Instructions:
 
 Thread Summary: ${summaryResult.summary}`;
 
-    const labelsResponse = await env.AI.run('@cf/meta/llama-4-scout-17b-16e-instruct', {
+    const flowiseService = getFlowiseService();
+    const labelsResponse = await flowiseService.run('@cf/meta/llama-4-scout-17b-16e-instruct', {
       messages: [
         {
           role: 'system',
@@ -508,18 +546,36 @@ Thread Summary: ${summaryResult.summary}`;
       ],
     });
 
-    const suggestions: { name: string; source: string }[] = labelsResponse.response;
+    // Parsear la respuesta JSON si es necesario
+    let suggestions: { name: string; source: string }[] = [];
+    try {
+      const responseText = labelsResponse.response || '';
+      // Intentar parsear como JSON si es un string
+      if (typeof responseText === 'string') {
+        const parsed = JSON.parse(responseText);
+        suggestions = Array.isArray(parsed) ? parsed : parsed.suggestions || [];
+      } else if (Array.isArray(responseText)) {
+        suggestions = responseText;
+      } else {
+        suggestions = [];
+      }
+    } catch (error) {
+      console.error('[WORKFLOW_FUNCTIONS] Failed to parse label suggestions:', error);
+      suggestions = [];
+    }
 
     console.log('[WORKFLOW_FUNCTIONS] Generated label suggestions:', suggestions);
     return { suggestions, accountLabelsMap };
   },
 
   syncLabels: async (context) => {
-    const suggestionsResult: {
+    const suggestionsResult = context.results?.get('generate-label-suggestions') as {
       suggestions: { name: string; source: string }[];
       accountLabelsMap: Record<string, any>;
-    } = context.results?.get('generate-label-suggestions') || { suggestions: [] };
-    const userLabelsResult = context.results?.get('get-user-labels');
+    } | undefined;
+    const userLabelsResult = context.results?.get('get-user-labels') as {
+      userAccountLabels: any[];
+    } | undefined;
 
     if (!suggestionsResult?.suggestions || suggestionsResult.suggestions.length === 0) {
       console.log('[WORKFLOW_FUNCTIONS] No label suggestions to sync');
@@ -585,7 +641,9 @@ Thread Summary: ${summaryResult.summary}`;
     const labelsToAdd = finalLabelIds.filter((id: string) => !currentLabelIds.includes(id));
 
     // Determine AI-managed labels for removal logic
-    const userTopicsResult = context.results?.get('get-user-topics');
+    const userTopicsResult = context.results?.get('get-user-topics') as {
+      userTopics?: { name: string; usecase: string }[];
+    } | undefined;
     const userTopics = userTopicsResult?.userTopics || [];
 
     const aiManagedLabelNames = new Set([
@@ -667,7 +725,8 @@ const summarizeThread = async (
           content: prompt,
         },
       ];
-      const response = await env.AI.run('@cf/meta/llama-4-scout-17b-16e-instruct', {
+      const flowiseService = getFlowiseService();
+      const response = await flowiseService.run('@cf/meta/llama-4-scout-17b-16e-instruct', {
         messages: promptMessages,
       });
       const summary = response.response;
@@ -684,7 +743,8 @@ const summarizeThread = async (
           content: prompt,
         },
       ];
-      const response = await env.AI.run('@cf/meta/llama-4-scout-17b-16e-instruct', {
+      const flowiseService = getFlowiseService();
+      const response = await flowiseService.run('@cf/meta/llama-4-scout-17b-16e-instruct', {
         messages: promptMessages,
       });
       const summary = response.response;

@@ -20,11 +20,14 @@ import { composeEmail } from '../../trpc/routes/ai/compose';
 import { getCurrentDateContext } from '../../lib/prompts';
 import { connection } from '../../db/schema';
 import { FOLDERS } from '../../lib/utils';
-import { env } from 'cloudflare:workers';
+import { env } from '../../env';
+import { getFlowiseService } from '../../lib/flowise-service';
+import { getVectorizeService } from '../../lib/vectorize-service';
 import { eq, and } from 'drizzle-orm';
 import { McpAgent } from 'agents/mcp';
 import { createDb } from '../../db';
 import z from 'zod';
+import type { IGetThreadsResponse } from '../../lib/driver/types';
 
 export class ZeroMCP extends McpAgent<typeof env, Record<string, unknown>, { userId: string }> {
   server = new McpServer({
@@ -84,7 +87,8 @@ export class ZeroMCP extends McpAgent<typeof env, Record<string, unknown>, { use
             ],
           };
         }
-        const response = await env.VECTORIZE.getByIds([s.id]);
+        const vectorizeService = getVectorizeService();
+        const response = await vectorizeService.getByIds([s.id]);
         const { result: thread } = await getThread(this.activeConnectionId, s.id);
         if (response.length && response?.[0]?.metadata?.['summary'] && thread?.latest?.subject) {
           const result = response[0].metadata as { summary: string; connection: string };
@@ -98,7 +102,8 @@ export class ZeroMCP extends McpAgent<typeof env, Record<string, unknown>, { use
               ],
             };
           }
-          const shortResponse = await env.AI.run('@cf/facebook/bart-large-cnn', {
+          const flowiseService = getFlowiseService();
+          const shortResponse = await flowiseService.run('@cf/facebook/bart-large-cnn', {
             input_text: result.summary,
           });
           return {
@@ -318,15 +323,16 @@ export class ZeroMCP extends McpAgent<typeof env, Record<string, unknown>, { use
         },
       },
       async (s) => {
-        const result = await agent.rawListThreads({
+        const result: IGetThreadsResponse = await agent.rawListThreads({
           folder: s.folder,
           query: s.query,
           maxResults: s.maxResults,
           labelIds: s.labelIds,
           pageToken: s.pageToken,
         });
+        const threads = result.threads || [];
         const content = await Promise.all(
-          result.threads.map(async (thread) => {
+          threads.map(async (thread: { id: string; historyId: string | null; $raw?: unknown }) => {
             const { result: loadedThread } = await getThread(this.activeConnectionId!, thread.id);
             return [
               {
@@ -335,7 +341,7 @@ export class ZeroMCP extends McpAgent<typeof env, Record<string, unknown>, { use
               },
               {
                 type: 'text' as const,
-                text: `Latest Message Sender: ${thread.latest?.sender.name} <${thread.latest?.sender.email}>`,
+                text: `Latest Message Sender: ${loadedThread.latest?.sender.name} <${loadedThread.latest?.sender.email}>`,
               },
             ];
           }),

@@ -24,7 +24,6 @@ export type ZeroEnv = {
   snoozed_emails: KVNamespace;
   gmail_sub_age: KVNamespace;
   subscribe_queue: Queue;
-  AI: Ai;
   gmail_history_id: KVNamespace;
   gmail_processing_threads: KVNamespace;
   subscribed_accounts: KVNamespace;
@@ -34,7 +33,7 @@ export type ZeroEnv = {
   JWT_SECRET: 'secret';
   ELEVENLABS_API_KEY: '1234567890';
   DISABLE_CALLS: 'true' | '';
-  DROP_AGENT_TABLES: 'false';
+  DROP_AGENT_TABLES: 'false' | 'true';
   THREAD_SYNC_MAX_COUNT: '5' | '20' | '10';
   THREAD_SYNC_LOOP: 'false' | 'true';
   DISABLE_WORKFLOWS: 'true';
@@ -85,6 +84,10 @@ export type ZeroEnv = {
   OPENAI_MODEL: string;
   OPENAI_MINI_MODEL: string;
   ANTHROPIC_API_KEY: string;
+  FLOWISE_BASE_URL: string;
+  FLOWISE_SUMMARY_ENDPOINT: string;
+  FLOWISE_EMBEDDING_ENDPOINT: string;
+  FLOWISE_RAG_ENDPOINT: string;
   GOOGLE_S_ACCOUNT: string;
   AXIOM_API_TOKEN: string;
   AXIOM_DATASET: string;

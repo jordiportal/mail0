@@ -7,11 +7,10 @@ import { StyledEmailAssistantSystemPrompt } from '../../../lib/prompts';
 import { webSearch } from '../../../routes/agent/tools';
 import { activeConnectionProcedure } from '../../trpc';
 import { getPrompt } from '../../../lib/brain';
+import { getFlowiseService } from '../../../lib/flowise-service';
 import { stripHtml } from 'string-strip-html';
 import { EPrompts } from '../../../types';
 import { env } from '../../../env';
-import { openai } from '@ai-sdk/openai';
-import { generateText } from 'ai';
 import { z } from 'zod';
 
 type ComposeEmailInput = {
@@ -85,8 +84,8 @@ export async function composeEmail(input: ComposeEmailInput) {
           },
         ];
 
-  const { text } = await generateText({
-    model: openai(env.OPENAI_MINI_MODEL || 'gpt-4o-mini'),
+  const flowiseService = getFlowiseService();
+  const response = await flowiseService.run('@cf/meta/llama-4-scout-17b-16e-instruct', {
     messages: [
       {
         role: 'system',
@@ -98,17 +97,10 @@ export async function composeEmail(input: ComposeEmailInput) {
         content: userPrompt,
       },
     ],
-    maxSteps: 10,
-    maxTokens: 2_000,
-    temperature: 0.35,
-    frequencyPenalty: 0.2,
-    presencePenalty: 0.1,
-    maxRetries: 1,
-    tools: {
-      webSearch: webSearch(),
-    },
   });
 
+  // Extraer el texto de la respuesta
+  const text = response.response || response.text || '';
   return text;
 }
 
@@ -266,25 +258,24 @@ const generateSubject = async (message: string, styleProfile?: WritingStyleMatri
     'Generate a concise, clear subject line that summarizes the main point of the email. The subject should be professional and under 100 characters.',
   );
 
-  const { text } = await generateText({
-    model: openai(env.OPENAI_MODEL || 'gpt-4o'),
+  const systemPrompt =
+    'You are an email subject line generator. Generate a concise, clear subject line that summarizes the main point of the email. The subject should be professional and under 100 characters.';
+  const userPrompt = parts.join('\n\n');
+
+  const flowiseService = getFlowiseService();
+  const response = await flowiseService.run('@cf/meta/llama-4-scout-17b-16e-instruct', {
     messages: [
       {
         role: 'system',
-        content:
-          'You are an email subject line generator. Generate a concise, clear subject line that summarizes the main point of the email. The subject should be professional and under 100 characters.',
+        content: systemPrompt,
       },
       {
         role: 'user',
-        content: parts.join('\n\n'),
+        content: userPrompt,
       },
     ],
-    maxTokens: 50,
-    temperature: 0.3,
-    frequencyPenalty: 0.1,
-    presencePenalty: 0.1,
-    maxRetries: 1,
   });
 
+  const text = response.response || response.text || '';
   return text.trim();
 };

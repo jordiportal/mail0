@@ -14,6 +14,7 @@
 
 import dedent from 'dedent';
 import { env } from './env';
+import { getFlowiseService } from './lib/flowise-service';
 
 const showLogs = true;
 
@@ -106,7 +107,8 @@ export const getEmbeddingVector = async (text: string) => {
       return null;
     }
 
-    const embeddingResponse = await env.AI.run(
+    const flowiseService = getFlowiseService();
+    const embeddingResponse = await flowiseService.run(
       '@cf/baai/bge-large-en-v1.5',
       { text: text.trim() },
       {

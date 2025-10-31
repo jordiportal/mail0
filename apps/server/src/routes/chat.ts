@@ -20,14 +20,17 @@ import { createSimpleAuth, type SimpleAuth } from '../lib/auth';
 import { connectionToDriver } from '../lib/server-utils';
 import type { CreateDraftData } from '../lib/schemas';
 import { FOLDERS, parseHeaders } from '../lib/utils';
-import { env, RpcTarget } from 'cloudflare:workers';
+import { env, type ZeroEnv } from '../env';
+import { RpcTarget } from 'cloudflare:workers';
 import { AIChatAgent } from 'agents/ai-chat-agent';
 import { tools as authTools } from './agent/tools';
 import { processToolCalls } from './agent/utils';
 import type { Message as ChatMessage } from 'ai';
+import { getPrompt } from '../pipelines.effect';
 import { getPromptName } from '../pipelines';
 import { connection } from '../db/schema';
-import { getPrompt } from '../lib/brain';
+import { getFlowiseService } from '../lib/flowise-service';
+import { getVectorizeService } from '../lib/vectorize-service';
 import { openai } from '@ai-sdk/openai';
 import { and, eq } from 'drizzle-orm';
 import { McpAgent } from 'agents/mcp';
@@ -306,12 +309,12 @@ const shouldDropTables = env.DROP_AGENT_TABLES === 'true';
 const maxCount = parseInt(env.THREAD_SYNC_MAX_COUNT || '40', 10);
 const shouldLoop = env.THREAD_SYNC_LOOP !== 'false';
 
-export class ZeroAgent extends AIChatAgent<typeof env> {
+export class ZeroAgent extends AIChatAgent<ZeroEnv> {
   private chatMessageAbortControllers: Map<string, AbortController> = new Map();
   private foldersInSync: string[] = [];
   private currentFolder: string | null = 'inbox';
   driver: MailManager | null = null;
-  constructor(ctx: DurableObjectState, env: Env) {
+  constructor(ctx: DurableObjectState, env: ZeroEnv) {
     super(ctx, env);
     if (shouldDropTables) this.dropTables();
     this.sql`
@@ -356,7 +359,7 @@ export class ZeroAgent extends AIChatAgent<typeof env> {
             throw new Error('Unauthorized no driver or connectionId [2]');
           }
         }
-        const tools = { ...authTools(this.driver, connectionId), buildGmailSearchQuery };
+        const tools = { ...(await authTools(connectionId)), buildGmailSearchQuery };
         const processedMessages = await processToolCalls(
           {
             messages: this.messages,
@@ -373,7 +376,7 @@ export class ZeroAgent extends AIChatAgent<typeof env> {
           onFinish,
           system: await getPrompt(
             getPromptName(connectionId, EPrompts.Chat),
-            AiChatPrompt('', '', ''),
+            AiChatPrompt(),
           ),
         });
 
@@ -1166,7 +1169,7 @@ export class ZeroAgent extends AIChatAgent<typeof env> {
   }
 }
 
-export class ZeroMCP extends McpAgent<typeof env, {}, { userId: string }> {
+export class ZeroMCP extends McpAgent<ZeroEnv, {}, { userId: string }> {
   server = new McpServer({
     name: 'zero-mcp',
     version: '1.0.0',
@@ -1175,7 +1178,7 @@ export class ZeroMCP extends McpAgent<typeof env, {}, { userId: string }> {
 
   activeConnectionId: string | undefined;
 
-  constructor(ctx: DurableObjectState, env: Env) {
+  constructor(ctx: DurableObjectState, env: ZeroEnv) {
     super(ctx, env);
   }
 
@@ -1342,10 +1345,12 @@ export class ZeroMCP extends McpAgent<typeof env, {}, { userId: string }> {
             text: `Thread ID: ${s.threadId}`,
           },
         ];
-        const response = await env.VECTORIZE.getByIds([s.threadId]);
+        const vectorizeService = getVectorizeService();
+        const response = await vectorizeService.getByIds([s.threadId]);
         if (response.length && response?.[0]?.metadata?.['summary']) {
           const content = response[0].metadata['summary'] as string;
-          const shortResponse = await env.AI.run('@cf/facebook/bart-large-cnn', {
+          const flowiseService = getFlowiseService();
+          const shortResponse = await flowiseService.run('@cf/facebook/bart-large-cnn', {
             input_text: content,
           });
           return {

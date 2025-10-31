@@ -3,6 +3,8 @@ import { EProviders, EPrompts, type ISubscribeBatch } from '../../types';
 import { activeConnectionProcedure, router } from '../trpc';
 import { setSubscribedState } from '../../lib/utils';
 import { env } from '../../env';
+import { getFlowiseService } from '../../lib/flowise-service';
+import { getVectorizeService } from '../../lib/vectorize-service';
 import { z } from 'zod';
 
 const labelSchema = z.object({
@@ -36,11 +38,13 @@ export const brainRouter = router({
     )
     .query(async ({ input, ctx }) => {
       const { threadId } = input;
-      const response = await env.VECTORIZE.getByIds([threadId]);
+      const vectorizeService = getVectorizeService();
+      const response = await vectorizeService.getByIds([threadId]);
       if (response.length && response?.[0]?.metadata?.['summary']) {
         const result = response[0].metadata as { summary: string; connection: string };
         if (result.connection !== ctx.activeConnection.id) return null;
-        const shortResponse = await env.AI.run('@cf/facebook/bart-large-cnn', {
+        const flowiseService = getFlowiseService();
+        const shortResponse = await flowiseService.run('@cf/facebook/bart-large-cnn', {
           input_text: result.summary,
         });
         return {

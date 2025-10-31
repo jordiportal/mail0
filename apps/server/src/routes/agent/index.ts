@@ -70,6 +70,7 @@ import { threads } from './db/schema';
 import { Effect, pipe } from 'effect';
 import { groq } from '@ai-sdk/groq';
 import { createDb } from '../../db';
+import { getFlowiseService } from '../../lib/flowise-service';
 import type { Message } from 'ai';
 import { create } from './db';
 
@@ -757,6 +758,13 @@ export class ZeroDriver extends DurableObject<ZeroEnv> {
     return await this.getThreadFromDB(threadId, includeDrafts);
   }
 
+  async getRawEmail(messageId: string) {
+    if (!this.driver) {
+      throw new Error('No driver available');
+    }
+    return await this.driver.getRawEmail(messageId);
+  }
+
   //   async markThreadsRead(threadIds: string[]) {
   //     if (!this.driver) {
   //       throw new Error('No driver available');
@@ -1075,7 +1083,8 @@ export class ZeroDriver extends DurableObject<ZeroEnv> {
         folder_filter: `${this.name}/`,
       });
 
-      const answer = await this.env.AI.autorag(this.env.AUTORAG_ID).aiSearch({
+      const flowiseService = getFlowiseService();
+      const answer = await flowiseService.autorag(this.env.AUTORAG_ID).aiSearch({
         query: query,
         //   rewrite_query: true,
         max_num_results: 3,
