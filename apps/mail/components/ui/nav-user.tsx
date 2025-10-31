@@ -516,12 +516,12 @@ export function NavUser() {
                 </AddConnectionDialog>
               ) : (
                 <>
-                  <Button
-                    onClick={() => setPricingDialog('true')}
-                    className="hover:bg-offsetLight/80 dark:hover:bg-offsetDark/80 flex h-7 w-7 cursor-pointer items-center justify-center rounded-[5px] border border-dashed bg-transparent px-0 text-black dark:bg-[#262626] dark:text-[#929292]"
-                  >
-                    <Plus className="size-4" />
-                  </Button>
+                  {/* Deshabilitado: Botón de upgrade - ahora permite agregar conexiones sin restricciones */}
+                  <AddConnectionDialog>
+                    <Button className="hover:bg-offsetLight/80 dark:hover:bg-offsetDark/80 flex h-7 w-7 cursor-pointer items-center justify-center rounded-[5px] border border-dashed bg-transparent px-0 text-black dark:bg-[#262626] dark:text-[#929292]">
+                      <Plus className="size-4" />
+                    </Button>
+                  </AddConnectionDialog>
                 </>
               )}
             </div>

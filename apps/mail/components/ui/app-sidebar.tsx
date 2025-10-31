@@ -126,7 +126,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </div>
           </SidebarContent>
 
-          {!isLoading && !isPro && showUpgrade && state !== 'collapsed' && (
+          {/* Deshabilitado: Menú de upgrade */}
+          {/* {false && !isLoading && !isPro && showUpgrade && state !== 'collapsed' && (
             <div className="relative top-3 mx-3 mb-4 rounded-lg border bg-white px-4 py-4 backdrop-blur-sm dark:bg-[#1C1C1C]">
               <Button
                 variant="ghost"
@@ -160,9 +161,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     Start 7 day free trial
                   </div>
                 </div>
-              </button>
-            </div>
-          )}
+                </button>
+              </div>
+            )} */}
 
           <SidebarFooter className={`px-0 pb-0 ${state === 'collapsed' ? 'md:px-2' : 'md:px-4'}`}>
             <NavMain items={bottomNavItems} />

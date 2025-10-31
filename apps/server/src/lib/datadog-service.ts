@@ -3,20 +3,24 @@ import type { TRPCCallLog } from '../types/logging';
 import type { ZeroEnv } from '../env';
 
 export class DatadogService {
-    private apiInstance: v2.LogsApi;
+    private apiInstance: v2.LogsApi | null = null;
     private apiKey: string;
     private appKey: string;
     private site: string;
+    private isEnabled: boolean;
 
     constructor(env?: ZeroEnv) {
-        // Runtime validation for required Datadog credentials
-        if (!env?.DD_API_KEY || env.DD_API_KEY.trim() === '') {
-            throw new Error('DD_API_KEY environment variable is required and cannot be empty for Datadog service');
+        // Si Datadog no está configurado, operar en modo disabled
+        if (!env?.DD_API_KEY || env.DD_API_KEY.trim() === '' || !env?.DD_APP_KEY || env.DD_APP_KEY.trim() === '') {
+            console.warn('[DATADOG] Datadog no está configurado. El logging a Datadog está deshabilitado.');
+            this.isEnabled = false;
+            this.apiKey = '';
+            this.appKey = '';
+            this.site = 'datadoghq.com';
+            return;
         }
 
-        if (!env?.DD_APP_KEY || env.DD_APP_KEY.trim() === '') {
-            throw new Error('DD_APP_KEY environment variable is required and cannot be empty for Datadog service');
-        }
+        this.isEnabled = true;
 
         const configuration = client.createConfiguration({
             authMethods: {
@@ -51,6 +55,11 @@ export class DatadogService {
     }
 
     async logSingleCall(sessionId: string, userId: string, log: TRPCCallLog): Promise<void> {
+        // Si Datadog no está habilitado, no hacer nada
+        if (!this.isEnabled || !this.apiInstance) {
+            return;
+        }
+
         // Skip logging-related procedures to avoid recursive logging
         if (this.isLoggingProcedure(log.procedure)) {
             return;

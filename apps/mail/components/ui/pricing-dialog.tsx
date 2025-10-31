@@ -39,8 +39,9 @@ export function PricingDialog() {
     }
   };
 
+  // Deshabilitado: Diálogo de pricing siempre cerrado
   return (
-    <Dialog open={!!open} onOpenChange={(open) => setOpen(open ? 'true' : null)}>
+    <Dialog open={false} onOpenChange={() => {}}>
       <DialogTrigger asChild>
         <div className="hidden" />
       </DialogTrigger>

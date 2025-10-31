@@ -118,40 +118,41 @@ function ChatHeader({
           </>
         )}
 
-        {!isPro && (
-          <>
-            <TooltipProvider delayDuration={0}>
-              <Tooltip>
-                <TooltipTrigger asChild className="md:h-fit md:px-2">
-                  <div>
-                    <Gauge
-                      max={chatMessages.included_usage}
-                      value={chatMessages.usage}
-                      size="small"
-                      showValue={true}
-                    />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>
-                    You've used {chatMessages.usage} out of {chatMessages.included_usage} chat
-                    messages.
-                  </p>
-                  <p className="mb-2">Upgrade for unlimited messages!</p>
-                  <Button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPricingDialog('true');
-                    }}
-                    className="h-8 w-full"
-                  >
-                    Start 7 day free trial
-                  </Button>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </>
-        )}
+            {/* Deshabilitado: Gauge y botón de upgrade cuando no es Pro */}
+            {/* {false && !isPro && (
+              <>
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild className="md:h-fit md:px-2">
+                      <div>
+                        <Gauge
+                          max={chatMessages.included_usage}
+                          value={chatMessages.usage}
+                          size="small"
+                          showValue={true}
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>
+                        You've used {chatMessages.usage} out of {chatMessages.included_usage} chat
+                        messages.
+                      </p>
+                      <p className="mb-2">Upgrade for unlimited messages!</p>
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPricingDialog('true');
+                        }}
+                        className="h-8 w-full"
+                      >
+                        Start 7 day free trial
+                      </Button>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </>
+            )} */}
 
         <PromptsDialog />
 

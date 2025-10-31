@@ -49,7 +49,8 @@ export const createLoggingMiddleware = () => {
                 loggingService = new LoggingService(c.env);
                 loggingService.initializeSession(sessionId, userId);
             } catch (error) {
-                console.error('Failed to initialize logging service:', error);
+                console.warn('[LOGGING] No se pudo inicializar el servicio de logging, continuando sin logging:', error);
+                // Continuar sin logging en lugar de fallar
             }
         }
 

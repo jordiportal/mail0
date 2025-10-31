@@ -261,7 +261,8 @@ export function AIChat({
     <div className={cn('flex h-full flex-col', isFullScreen ? 'mx-auto max-w-xl' : '')}>
       <div className="no-scrollbar flex-1 overflow-y-auto" ref={messagesContainerRef}>
         <div className="min-h-full px-2 py-4">
-          {chatMessages && !chatMessages.enabled ? (
+          {/* Deshabilitado: Overlay de upgrade - siempre permitir chat */}
+          {/* {false && chatMessages && !chatMessages.enabled ? (
             <div
               onClick={() => setPricingDialog('true')}
               className="absolute inset-0 flex flex-col items-center justify-center"
@@ -351,6 +352,88 @@ export function AIChat({
                 </div>
               );
             })
+          )} */}
+          {!messages.length ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <div className="relative mb-4 h-[44px] w-[44px]">
+                <img src="/black-icon.svg" alt="Zero Logo" className="dark:hidden" />
+                <img src="/white-icon.svg" alt="Zero Logo" className="hidden dark:block" />
+              </div>
+              <p className="mb-1 mt-2 hidden text-center text-sm font-medium text-black md:block dark:text-white">
+                Ask anything about your emails
+              </p>
+              <p className="mb-3 text-center text-sm text-[#8C8C8C] dark:text-[#929292]">
+                Ask to do or show anything using natural language
+              </p>
+
+              {/* Example Thread */}
+              <ExampleQueries onQueryClick={handleQueryClick} />
+            </div>
+          ) : (
+            messages.map((message, index) => {
+              const textParts = message.parts.filter((part) => part.type === 'text');
+              const toolParts = message.parts.filter((part) => part.type === 'tool-invocation');
+
+              return (
+                <div key={`${message.id}-${index}`} className="mb-2 flex flex-col" data-message-role={message.role}>
+                  {toolParts.map(
+                    (part, index) =>
+                      part.toolInvocation?.result && (
+                        <ToolResponse
+                          key={`${part.toolInvocation.toolName}-${index}`}
+                          toolName={part.toolInvocation.toolName}
+                          result={part.toolInvocation.result}
+                          args={part.toolInvocation.args}
+                        />
+                      ),
+                  )}
+                  {textParts.length > 0 && (
+                    <div
+                      className={cn(
+                        'flex w-fit flex-col gap-2 rounded-lg text-sm',
+                        message.role === 'user'
+                          ? 'overflow-wrap-anywhere text-offsetDark dark:text-subtleWhite ml-auto break-words bg-[#f0f0f0] px-2 py-1 dark:bg-[#252525]'
+                          : 'text-offsetDark dark:text-subtleWhite',
+                      )}
+                    >
+                      {textParts.map((part, partIndex) => (
+                        <div key={`${partIndex}-${message.id}`}>
+                          {part.text && (
+                            <Markdown
+                              markdownCustomStyles={{
+                                h1: { fontSize: '1rem' },
+                                h2: { fontSize: '1rem' },
+                                h3: { fontSize: '1rem' },
+                                h4: { fontSize: '1rem' },
+                                h5: { fontSize: '1rem' },
+                                h6: { fontSize: '1rem' },
+                                p: { fontSize: '1rem' },
+                                li: {
+                                  fontSize: '1rem',
+                                  marginBottom: '0.25rem',
+                                  listStyleType: 'disc',
+                                  listStylePosition: 'inside',
+                                },
+                                ul: { fontSize: '1rem' },
+                                ol: { fontSize: '1rem' },
+                                blockQuote: { fontSize: '1rem' },
+                                codeBlock: { fontSize: '1rem' },
+                                codeInline: { fontSize: '1rem' },
+                                link: { fontSize: '1rem' },
+                                image: { fontSize: '1rem' },
+                              }}
+                              key={part.text}
+                            >
+                              {part.text || ' '}
+                            </Markdown>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
 
           {(status === 'submitted' || status === 'streaming') && (
@@ -394,7 +477,6 @@ export function AIChat({
                   form="ai-chat-form"
                   type="submit"
                   className="inline-flex cursor-pointer gap-1.5 rounded-lg"
-                  disabled={!chatMessages.enabled}
                 >
                   <div className="dark:bg[#141414] flex h-7 items-center justify-center gap-1 rounded-sm bg-[#262626] px-2 pr-1">
                     <CurvedArrow className="mt-1.5 h-4 w-4 fill-white dark:fill-[#929292]" />

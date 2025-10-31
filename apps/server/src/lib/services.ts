@@ -10,17 +10,18 @@ export const resend = () =>
 export const redis = () => new Redis({ url: env.REDIS_URL, token: env.REDIS_TOKEN });
 
 export const twilio = () => {
-  //   if (env.NODE_ENV === 'development' && !forceUseRealService) {
-  //     return {
-  //       messages: {
-  //         send: async (to: string, body: string) =>
-  //           console.log(`[TWILIO:MOCK] Sending message to ${to}: ${body}`),
-  //       },
-  //     };
-  //   }
-
+  // Si Twilio no está configurado, retornar un mock para desarrollo
   if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_PHONE_NUMBER) {
-    throw new Error('Twilio is not configured correctly');
+    console.warn('[TWILIO] Twilio no está configurado. Usando mock para desarrollo.');
+    return {
+      messages: {
+        send: async (to: string, body: string) => {
+          console.log(`[TWILIO:MOCK] Sending message to ${to}: ${body}`);
+          // En desarrollo, no lanzamos error pero tampoco enviamos el mensaje
+          return Promise.resolve();
+        },
+      },
+    };
   }
 
   const send = async (to: string, body: string) => {
