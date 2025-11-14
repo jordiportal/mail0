@@ -6,19 +6,53 @@ import type { HonoContext } from '../../ctx';
 import { toByteArray } from 'base64-js';
 export const FatalErrors = ['invalid_grant'];
 
-export const deleteActiveConnection = async () => {
-  const c = getContext<HonoContext>();
-  const activeConnection = await getActiveConnection();
-  if (!activeConnection) return console.log('No connection ID found');
-  const session = await c.var.auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session) return console.log('No session found');
+export const deleteActiveConnection = async (connectionId?: string, userId?: string) => {
   try {
-    await c.var.auth.api.signOut({ headers: c.req.raw.headers });
-    const db = await getZeroDB(session.user.id);
-    await db.deleteActiveConnection(activeConnection.id);
+    let c: HonoContext | undefined;
+    try {
+      c = getContext<HonoContext>();
+    } catch (error) {
+      // Context not available - this is OK when called from workflows or background jobs
+      console.log('[deleteActiveConnection] Context not available, using provided parameters');
+    }
+
+    // If we have context, try to get active connection and session
+    if (c) {
+      const activeConnection = await getActiveConnection();
+      if (!activeConnection) {
+        console.log('No connection ID found');
+        return;
+      }
+      
+      const session = await c.var.auth.api.getSession({ headers: c.req.raw.headers });
+      if (!session) {
+        console.log('No session found');
+        return;
+      }
+      
+      try {
+        await c.var.auth.api.signOut({ headers: c.req.raw.headers });
+      } catch (signOutError) {
+        console.warn('[deleteActiveConnection] Failed to sign out:', signOutError);
+      }
+      
+      const db = await getZeroDB(session.user.id);
+      await db.deleteActiveConnection(activeConnection.id);
+      return;
+    }
+
+    // Fallback: use provided parameters if context is not available
+    if (connectionId && userId) {
+      const db = await getZeroDB(userId);
+      await db.deleteActiveConnection(connectionId);
+      console.log(`[deleteActiveConnection] Deleted connection ${connectionId} for user ${userId}`);
+      return;
+    }
+
+    console.warn('[deleteActiveConnection] No context and no parameters provided, skipping deletion');
   } catch (error) {
     console.error('Server: Error deleting connection:', error);
-    throw error;
+    // Don't throw - this is a cleanup operation and shouldn't break the main flow
   }
 };
 

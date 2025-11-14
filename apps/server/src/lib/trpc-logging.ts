@@ -155,7 +155,7 @@ export const createLoggingMiddleware = () => {
                     callData.metadata.requestDuration = trace.duration;
                 }
 
-                // Log using the new service which will immediately log to Datadog
+                // Log using the logging service (in-memory stats only)
                 loggingService.logCall(callData).catch((err) => {
                     console.error('Failed to log TRPC call:', err);
                 });
@@ -226,7 +226,7 @@ export const createLoggingMiddleware = () => {
                     callData.metadata.requestDuration = trace.duration;
                 }
 
-                // Log using the new service which will immediately log to Datadog
+                // Log using the logging service (in-memory stats only)
                 loggingService.logCall(callData).catch((logErr) => {
                     console.error('Failed to log TRPC error:', logErr);
                 });

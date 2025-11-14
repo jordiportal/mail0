@@ -7,13 +7,13 @@ import {
   SuperSearchEmail,
   WelcomeEmail,
 } from './react-emails/email-sequences';
-import { createAuthMiddleware, phoneNumber, jwt, bearer, mcp } from 'better-auth/plugins';
+import { createAuthMiddleware, jwt, bearer, mcp } from 'better-auth/plugins';
 import { type Account, betterAuth, type BetterAuthOptions } from 'better-auth';
 import { getBrowserTimezone, isValidTimezone } from './timezones';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { getZeroDB, resetConnection } from './server-utils';
 import { getSocialProviders } from './auth-providers';
-import { redis, resend, twilio } from './services';
+import { redis, resend } from './services';
 import { dubAnalytics } from '@dub/better-auth';
 import { defaultUserSettings } from './schemas';
 import { disableBrainFunction } from './brain';
@@ -89,8 +89,18 @@ const scheduleCampaign = (userInfo: { address: string; name: string }) =>
   });
 
 const connectionHandlerHook = async (account: Account) => {
+  console.log(`[Auth] Processing connection for provider: ${account.providerId}`, {
+    userId: account.userId,
+    hasAccessToken: !!account.accessToken,
+    hasRefreshToken: !!account.refreshToken,
+  });
+
   if (!account.accessToken || !account.refreshToken) {
-    console.error('Missing Access/Refresh Tokens', { account });
+    console.error('[Auth] Missing Access/Refresh Tokens', {
+      providerId: account.providerId,
+      userId: account.userId,
+      accountId: account.id,
+    });
     throw new APIError('EXPECTATION_FAILED', {
       message: 'Missing Access/Refresh Tokens, contact us on Discord for support',
     });
@@ -105,15 +115,39 @@ const connectionHandlerHook = async (account: Account) => {
     },
   });
 
-  const userInfo = await driver.getUserInfo().catch(async () => {
+  const userInfo = await driver.getUserInfo().catch(async (error) => {
+    console.error(`[Auth] Failed to get user info for ${account.providerId}:`, {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      providerId: account.providerId,
+      userId: account.userId,
+    });
     if (account.accessToken) {
-      await driver.revokeToken(account.accessToken);
-      await resetConnection(account.id);
+      try {
+        await driver.revokeToken(account.accessToken);
+        await resetConnection(account.id);
+      } catch (revokeError) {
+        console.error('[Auth] Failed to revoke token during error handling:', revokeError);
+      }
     }
-    throw new Response(null, { status: 301, headers: { Location: '/' } });
+    throw new Response(
+      null,
+      { status: 301, headers: { Location: `${env.VITE_PUBLIC_APP_URL}/login?error=authentication_failed` } },
+    );
+  });
+
+  console.log(`[Auth] User info retrieved for ${account.providerId}:`, {
+    hasAddress: !!userInfo?.address,
+    hasName: !!userInfo?.name,
+    providerId: account.providerId,
   });
 
   if (!userInfo?.address) {
+    console.error(`[Auth] User info missing address for ${account.providerId}`, {
+      userInfo,
+      providerId: account.providerId,
+      userId: account.userId,
+    });
     try {
       await Promise.allSettled(
         [account.accessToken, account.refreshToken]
@@ -122,9 +156,12 @@ const connectionHandlerHook = async (account: Account) => {
       );
       await resetConnection(account.id);
     } catch (error) {
-      console.error('Failed to revoke tokens:', error);
+      console.error('[Auth] Failed to revoke tokens:', error);
     }
-    throw new Response(null, { status: 303, headers: { Location: '/' } });
+    throw new Response(
+      null,
+      { status: 303, headers: { Location: `${env.VITE_PUBLIC_APP_URL}/login?error=missing_email` } },
+    );
   }
 
   const updatingInfo = {
@@ -158,7 +195,6 @@ const connectionHandlerHook = async (account: Account) => {
 };
 
 export const createAuth = () => {
-  const twilioClient = twilio();
   const dub = new Dub();
 
   return betterAuth({
@@ -171,18 +207,6 @@ export const createAuth = () => {
       }),
       jwt(),
       bearer(),
-      phoneNumber({
-        sendOTP: async ({ code, phoneNumber }) => {
-          await twilioClient.messages
-            .send(phoneNumber, `Your verification code is: ${code}, do not share it with anyone.`)
-            .catch((error) => {
-              console.error('Failed to send OTP', error);
-              throw new APIError('INTERNAL_SERVER_ERROR', {
-                message: `Failed to send OTP, ${error.message}`,
-              });
-            });
-        },
-      }),
     ],
     user: {
       deleteUser: {
@@ -380,9 +404,19 @@ const createAuthConfig = () => {
     },
     onAPIError: {
       onError: (error) => {
-        console.error('API Error', error);
+        console.error('[Auth] API Error:', {
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          error: error,
+        });
       },
-      errorURL: `${env.VITE_PUBLIC_APP_URL}/login`,
+      errorURL: (error) => {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('account_already_linked_to_different_user')) {
+          return `${env.VITE_PUBLIC_APP_URL}/login?error=account_already_linked`;
+        }
+        return `${env.VITE_PUBLIC_APP_URL}/login?error=authentication_failed`;
+      },
       throw: true,
     },
   } satisfies BetterAuthOptions;

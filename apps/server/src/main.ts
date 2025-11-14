@@ -48,6 +48,7 @@ import type { HonoContext } from './ctx';
 import { createDb, type DB } from './db';
 import { createAuth } from './lib/auth';
 import { aiRouter } from './routes/ai';
+import { openapiRouter } from './routes/openapi';
 import { appRouter } from './trpc';
 import { cors } from 'hono/cors';
 import { Hono } from 'hono';
@@ -707,6 +708,18 @@ const api = new Hono<HonoContext>()
   .route('/autumn', autumnApi)
   .route('/public', publicRouter)
   .on(['GET', 'POST', 'OPTIONS'], '/auth/*', (c) => {
+    const url = new URL(c.req.url);
+    console.log('[Auth] Handling auth request:', {
+      path: url.pathname,
+      method: c.req.method,
+      searchParams: Object.fromEntries(url.searchParams),
+    });
+    
+    // Log Microsoft authorization URL if it's being generated
+    if (url.pathname.includes('/sign-in/social') && url.searchParams.get('provider') === 'microsoft') {
+      console.log('[Auth] Microsoft sign-in URL:', c.req.url);
+    }
+    
     return c.var.auth.handler(c.req.raw);
   })
   .use(
@@ -814,6 +827,7 @@ const app = new Hono<HonoContext>()
     },
     { replaceRequest: false },
   )
+  .route('/api/openapi', openapiRouter)
   .route('/api', api)
   .use(
     '*',

@@ -68,7 +68,6 @@ import { openai } from '@ai-sdk/openai';
 import * as schema from './db/schema';
 import { threads } from './db/schema';
 import { Effect, pipe } from 'effect';
-import { groq } from '@ai-sdk/groq';
 import { createDb } from '../../db';
 import { getFlowiseService } from '../../lib/flowise-service';
 import type { Message } from 'ai';
@@ -730,7 +729,11 @@ export class ZeroDriver extends DurableObject<ZeroEnv> {
       console.log(
         `[syncFolders] Starting folder sync for ${this.name} (threadCount: ${threadCount})`,
       );
-      await this.triggerSyncWorkflow('inbox');
+      // Sync both inbox and sent folders
+      await Promise.all([
+        this.triggerSyncWorkflow('inbox'),
+        this.triggerSyncWorkflow('sent'),
+      ]);
     } else {
       console.log(
         `[syncFolders] Skipping sync for ${this.name} - threadCount (${threadCount}) >= maxCount (${maxCount})`,
@@ -1781,7 +1784,7 @@ export class ZeroAgent extends AIChatAgent<ZeroEnv> {
 
         const model =
           this.env.USE_OPENAI === 'true'
-            ? groq('openai/gpt-oss-120b')
+            ? openai('gpt-4o')
             : anthropic(this.env.OPENAI_MODEL || 'claude-3-7-sonnet-20250219');
 
         const result = streamText({

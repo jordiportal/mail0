@@ -34,7 +34,6 @@ import { getVectorizeService } from '../lib/vectorize-service';
 import { openai } from '@ai-sdk/openai';
 import { and, eq } from 'drizzle-orm';
 import { McpAgent } from 'agents/mcp';
-import { groq } from '@ai-sdk/groq';
 import { createDb } from '../db';
 import { z } from 'zod';
 

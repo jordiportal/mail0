@@ -9,12 +9,14 @@ export class FlowiseService {
   private summaryEndpoint: string;
   private embeddingEndpoint: string;
   private ragEndpoint: string;
+  private apiKey: string;
 
   constructor() {
     this.baseURL = env.FLOWISE_BASE_URL || 'http://192.168.7.101:3002';
     this.summaryEndpoint = env.FLOWISE_SUMMARY_ENDPOINT || '74ebdc4c-481c-429c-b528-1c993c5586ca';
     this.embeddingEndpoint = env.FLOWISE_EMBEDDING_ENDPOINT || '74ebdc4c-481c-429c-b528-1c993c5586ca';
-    this.ragEndpoint = env.FLOWISE_RAG_ENDPOINT || '74ebdc4c-481c-429c-b528-1c993c5586ca';
+    this.ragEndpoint = env.FLOWISE_RAG_ENDPOINT || '068a3579-5168-4dd4-ad41-ee3314640daf';
+    this.apiKey = env.FLOWISE_API_KEY || '';
   }
 
   /**
@@ -118,6 +120,7 @@ export class FlowiseService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(this.apiKey && { 'Authorization': `Bearer ${this.apiKey}` }),
         },
         body: JSON.stringify({
           question: prompt,
@@ -169,6 +172,7 @@ export class FlowiseService {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              ...(this.apiKey && { 'Authorization': `Bearer ${this.apiKey}` }),
             },
             body: JSON.stringify({
               question: prompt,

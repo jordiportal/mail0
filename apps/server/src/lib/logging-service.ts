@@ -1,5 +1,4 @@
 import type { TRPCCallLog, LoggingState, SessionStats } from '../types/logging';
-import { DatadogService } from './datadog-service';
 import type { ZeroEnv } from '../env';
 
 // In-memory session storage for stats
@@ -7,15 +6,8 @@ import type { ZeroEnv } from '../env';
 const sessionStats = new Map<string, LoggingState>();
 
 export class LoggingService {
-    private datadogService: DatadogService | null = null;
-
     constructor(env: ZeroEnv) {
-        try {
-            this.datadogService = new DatadogService(env);
-        } catch (error) {
-            console.warn('[LOGGING] No se pudo inicializar DatadogService, continuando sin logging externo:', error);
-            this.datadogService = null;
-        }
+        // Datadog integration removed - logging service now only tracks in-memory stats
     }
 
     async logCall(callData: Omit<TRPCCallLog, 'id' | 'timestamp'>): Promise<void> {
@@ -24,19 +16,6 @@ export class LoggingService {
             id: crypto.randomUUID(),
             timestamp: Date.now(),
         };
-
-        // Immediately export to Datadog (si está disponible)
-        if (this.datadogService) {
-            try {
-                await this.datadogService.logSingleCall(
-                    callData.sessionId,
-                    callData.userId,
-                    log
-                );
-            } catch (error) {
-                console.error('❌ Failed to log TRPC call to Datadog:', error);
-            }
-        }
 
         // Update in-memory session stats
         this.updateSessionStats(callData.sessionId, callData.userId, log);

@@ -176,13 +176,11 @@
         "MEET_AUTH_HEADER": "",
         "OTEL_EXPORTER_OTLP_ENDPOINT": "https://api.axiom.co/v1/traces",
         "OTEL_SERVICE_NAME": "zero-email-server-local",
-        "DD_API_KEY": "",
-        "DD_APP_KEY": "",
-        "DD_SITE": "datadoghq.com",
         "FLOWISE_BASE_URL": "http://192.168.7.101:3002",
         "FLOWISE_SUMMARY_ENDPOINT": "74ebdc4c-481c-429c-b528-1c993c5586ca",
         "FLOWISE_EMBEDDING_ENDPOINT": "74ebdc4c-481c-429c-b528-1c993c5586ca",
-        "FLOWISE_RAG_ENDPOINT": "74ebdc4c-481c-429c-b528-1c993c5586ca",
+        "FLOWISE_RAG_ENDPOINT": "068a3579-5168-4dd4-ad41-ee3314640daf",
+        "FLOWISE_API_KEY": "bONxK4q31AtgH_iypyvY24tLmjRRyVV2xTfQv8lOR9k",
       },
       "kv_namespaces": [
         {
@@ -398,13 +396,11 @@
         "DISABLE_WORKFLOWS": "false",
         "OTEL_EXPORTER_OTLP_ENDPOINT": "https://api.axiom.co/v1/traces",
         "OTEL_SERVICE_NAME": "zero-email-server-staging",
-        "DD_API_KEY": "",
-        "DD_APP_KEY": "",
-        "DD_SITE": "datadoghq.com",
         "FLOWISE_BASE_URL": "http://192.168.7.101:3002",
         "FLOWISE_SUMMARY_ENDPOINT": "74ebdc4c-481c-429c-b528-1c993c5586ca",
         "FLOWISE_EMBEDDING_ENDPOINT": "74ebdc4c-481c-429c-b528-1c993c5586ca",
-        "FLOWISE_RAG_ENDPOINT": "74ebdc4c-481c-429c-b528-1c993c5586ca",
+        "FLOWISE_RAG_ENDPOINT": "068a3579-5168-4dd4-ad41-ee3314640daf",
+        "FLOWISE_API_KEY": "bONxK4q31AtgH_iypyvY24tLmjRRyVV2xTfQv8lOR9k",
       },
       "kv_namespaces": [
         {
@@ -617,13 +613,11 @@
         "DISABLE_WORKFLOWS": "true",
         "OTEL_EXPORTER_OTLP_ENDPOINT": "https://api.axiom.co/v1/traces",
         "OTEL_SERVICE_NAME": "zero-email-server-production",
-        "DD_API_KEY": "",
-        "DD_APP_KEY": "",
-        "DD_SITE": "datadoghq.com",
         "FLOWISE_BASE_URL": "http://192.168.7.101:3002",
         "FLOWISE_SUMMARY_ENDPOINT": "74ebdc4c-481c-429c-b528-1c993c5586ca",
         "FLOWISE_EMBEDDING_ENDPOINT": "74ebdc4c-481c-429c-b528-1c993c5586ca",
-        "FLOWISE_RAG_ENDPOINT": "74ebdc4c-481c-429c-b528-1c993c5586ca",
+        "FLOWISE_RAG_ENDPOINT": "068a3579-5168-4dd4-ad41-ee3314640daf",
+        "FLOWISE_API_KEY": "bONxK4q31AtgH_iypyvY24tLmjRRyVV2xTfQv8lOR9k",
       },
       "kv_namespaces": [
         {

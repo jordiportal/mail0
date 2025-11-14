@@ -56,19 +56,20 @@ export const authProviders = (env: Record<string, string>): ProviderConfig[] => 
     envVarInfo: [
       { name: 'MICROSOFT_CLIENT_ID', source: 'Microsoft Azure App ID' },
       { name: 'MICROSOFT_CLIENT_SECRET', source: 'Microsoft Azure App Password' },
-      { name: 'MICROSOFT_AUTHORITY', source: 'Microsoft Azure Authority (optional)', defaultValue: 'https://login.microsoftonline.com/common' },
+      { name: 'MICROSOFT_AUTHORITY', source: 'Microsoft Azure Authority (optional)', defaultValue: 'https://login.microsoftonline.com/organizations' },
     ],
     config: {
       clientId: env.MICROSOFT_CLIENT_ID,
       clientSecret: env.MICROSOFT_CLIENT_SECRET,
-      redirectUri: env.MICROSOFT_REDIRECT_URI,
+      redirectUri: (env as any).MICROSOFT_REDIRECT_URI || `${env.VITE_PUBLIC_BACKEND_URL}/auth/callback/microsoft`,
       scope: [
         'https://graph.microsoft.com/User.Read',
         'https://graph.microsoft.com/Mail.ReadWrite',
         'https://graph.microsoft.com/Mail.Send',
         'offline_access',
       ],
-      authority: env.MICROSOFT_AUTHORITY || 'https://login.microsoftonline.com/common',
+      authority: (env as any).MICROSOFT_AUTHORITY || 'https://login.microsoftonline.com/organizations',
+      tenant: (env as any).MICROSOFT_AUTHORITY?.replace('https://login.microsoftonline.com/', '') || 'organizations',
       responseType: 'code',
       prompt: 'consent',
       loginHint: 'email',
@@ -98,6 +99,14 @@ export function getSocialProviders(env: Record<string, string>) {
     authProviders(env)
       .map((provider) => {
         if (isProviderEnabled(provider, env)) {
+          if (provider.id === 'microsoft') {
+            console.log('[Auth] Microsoft provider config:', {
+              authority: (provider.config as any).authority,
+              tenant: (provider.config as any).tenant,
+              redirectUri: (provider.config as any).redirectUri,
+              clientId: (provider.config as any).clientId ? '***configured***' : 'missing',
+            });
+          }
           return [provider.id, provider.config] as [string, unknown];
         } else if (provider.required) {
           throw new Error(

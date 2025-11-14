@@ -20,6 +20,7 @@ import { connection } from '../db/schema';
 import type { ZeroEnv } from '../env';
 import { eq } from 'drizzle-orm';
 import { createDb } from '../db';
+import { getFolderTags } from '../lib/utils';
 
 export interface SyncThreadsParams {
   connectionId: string;
@@ -149,16 +150,22 @@ export class SyncThreadsWorkflow extends WorkflowEntrypoint<ZeroEnv, SyncThreads
             if (latest) {
               const normalizedReceivedOn = new Date(latest.receivedOn).toISOString();
 
+              // Get folder labels and combine with message tags
+              const folderLabels = getFolderTags(folder);
+              const messageTagIds = latest.tags.map((tag) => tag.id);
+              // Combine folder labels with message tags, avoiding duplicates
+              const allLabelIds = [...new Set([...folderLabels, ...messageTagIds])];
+
               await agent.storeThreadInDB(
                 {
                   id: thread.id,
                   threadId: thread.id,
-                  providerId: 'google',
+                  providerId: foundConnection.providerId || 'google',
                   latestSender: latest.sender,
                   latestReceivedOn: normalizedReceivedOn,
                   latestSubject: latest.subject,
                 },
-                latest.tags.map((tag) => tag.id),
+                allLabelIds,
               );
 
               pageProcessingResult.processedCount++;

@@ -23,27 +23,42 @@ import * as he from 'he';
 
 export class OutlookMailManager implements MailManager {
   private graphClient: Client;
+  private accessToken: string | null = null;
 
   constructor(public config: ManagerConfig) {
-    const getAccessToken = async () => {
-      const c = getContext<HonoContext>();
-      const data = await c.var.auth.api.getAccessToken({
-        body: {
-          providerId: 'microsoft',
-          userId: config.auth.userId,
-          // accountId: config.auth.accountId,
+    // Si tenemos un accessToken en el config, lo usamos directamente
+    if (config.auth.accessToken) {
+      this.accessToken = config.auth.accessToken;
+      this.graphClient = Client.initWithMiddleware({
+        authProvider: {
+          getAccessToken: async () => {
+            if (!this.accessToken) throw new Error('Access token not available');
+            return this.accessToken;
+          },
         },
-        headers: c.req.raw.headers,
       });
-      if (!data.accessToken) throw new Error('Failed to get access token');
-      return data.accessToken;
-    };
+    } else {
+      // Si no hay token, intentamos obtenerlo del contexto (para uso después del hook)
+      const getAccessToken = async () => {
+        const c = getContext<HonoContext>();
+        const data = await c.var.auth.api.getAccessToken({
+          body: {
+            providerId: 'microsoft',
+            userId: config.auth.userId,
+            // accountId: config.auth.accountId,
+          },
+          headers: c.req.raw.headers,
+        });
+        if (!data.accessToken) throw new Error('Failed to get access token');
+        return data.accessToken;
+      };
 
-    this.graphClient = Client.initWithMiddleware({
-      authProvider: {
-        getAccessToken,
-      },
-    });
+      this.graphClient = Client.initWithMiddleware({
+        authProvider: {
+          getAccessToken,
+        },
+      });
+    }
   }
 
   public getScope(): string {
@@ -247,16 +262,11 @@ export class OutlookMailManager implements MailManager {
     // }
 
     request = request.select(
-      'id,subject,from,toRecipients,ccRecipients,bccRecipients,sentDateTime,receivedDateTime,isRead,internetMessageId,inferenceClassification,categories,parentFolderId',
+      'id,subject,from,toRecipients,ccRecipients,bccRecipients,sentDateTime,receivedDateTime,isRead,internetMessageId,inferenceClassification,categories,parentFolderId,bodyPreview,conversationId',
     );
 
     if (maxResults > 0) {
       request = request.top(maxResults);
-    }
-    if (pageToken) {
-      console.warn(
-        'Outlook pagination typically uses @odata.nextLink (full URL). pageToken needs to be handled accordingly.',
-      );
     }
 
     // request = request.orderby('receivedDateTime desc');
@@ -264,52 +274,51 @@ export class OutlookMailManager implements MailManager {
     return this.withErrorHandler(
       'list',
       async () => {
-        const res = await request.get();
+        // If pageToken is provided, it's a full URL from @odata.nextLink, use it directly
+        let res;
+        if (pageToken && pageToken.startsWith('http')) {
+          // Extract the path from the full URL and use it with graphClient
+          try {
+            const url = new URL(pageToken);
+            const path = url.pathname + url.search;
+            // Remove the leading /v1.0 if present
+            const apiPath = path.replace(/^\/v1\.0/, '');
+            res = await this.graphClient.api(apiPath).get();
+          } catch (error) {
+            console.error('Failed to parse pageToken URL:', error);
+            // Fall back to regular request
+            res = await request.get();
+          }
+        } else {
+          res = await request.get();
+        }
 
         // console.log(JSON.stringify(res, null, 4));
 
         const messages: Message[] = res.value;
         const nextPageLink: string | undefined = res['@odata.nextLink'];
 
-        // First parse all messages to get basic info
+        // Parse messages to get basic info only (no full content fetch for list view)
+        // Full content is loaded only when user opens a specific message via get()
         const parsedMessages = await Promise.all(
           messages.map((msg) => this.parseOutlookMessage(msg)),
         );
 
-        // Then fetch full content for each message
-        const fullMessages = await Promise.all(
-          messages.map(async (msg, index) => {
-            try {
-              // Get the full message content using the get method
-              const fullMessage = await this.get(msg.id || '');
-              return {
-                ...parsedMessages[index],
-                ...fullMessage.latest,
-                decodedBody: fullMessage.latest.decodedBody || '',
-              };
-            } catch (error) {
-              console.error(`Failed to fetch full message for ${msg.id}:`, error);
-              // If get fails, fall back to basic message info
-              return {
-                ...parsedMessages[index],
-                body: '',
-                processedHtml: '',
-                blobUrl: '',
-                decodedBody: '',
-                attachments: [],
-              };
-            }
-          }),
-        );
-
         // Format response according to interface requirements
+        // Only include basic metadata, not full message content
         return {
           threads: messages.map((msg, index) => ({
             id: msg.id || msg.internetMessageId || '',
             historyId: msg.lastModifiedDateTime ?? null,
             $raw: {
               ...msg,
-              ...fullMessages[index],
+              ...parsedMessages[index],
+              // Include empty placeholders for fields that would be loaded via get()
+              body: '',
+              processedHtml: '',
+              blobUrl: '',
+              decodedBody: '',
+              attachments: [],
             },
           })),
           nextPageToken: nextPageLink || null,
@@ -1049,6 +1058,19 @@ export class OutlookMailManager implements MailManager {
           textColor: '',
         },
       })) || [];
+
+    // Add UNREAD label if message is not read
+    if (!isRead) {
+      tags.push({
+        id: 'UNREAD',
+        name: 'UNREAD',
+        type: 'system',
+        color: {
+          backgroundColor: '',
+          textColor: '',
+        },
+      });
+    }
 
     const references: string | undefined = undefined;
     const inReplyTo: string | undefined = undefined;

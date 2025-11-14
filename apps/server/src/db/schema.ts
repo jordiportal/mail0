@@ -322,3 +322,45 @@ export const emailTemplate = createTable(
     unique('mail0_email_template_user_id_name_unique').on(t.userId, t.name),
   ],
 );
+
+// Tablas para almacenar embeddings localmente (reemplazan Cloudflare VECTORIZE)
+export const threadEmbeddings = createTable(
+  'thread_embeddings',
+  {
+    id: text('id').primaryKey(),
+    embedding: jsonb('embedding').notNull().$type<number[]>(),
+    metadata: jsonb('metadata').notNull().$type<{
+      connection: string;
+      thread: string;
+      summary: string;
+      lastMsg?: string;
+    }>(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('thread_embeddings_connection_idx').on(t.metadata),
+    index('thread_embeddings_thread_idx').on(t.metadata),
+    index('thread_embeddings_created_at_idx').on(t.createdAt),
+  ],
+);
+
+export const messageEmbeddings = createTable(
+  'message_embeddings',
+  {
+    id: text('id').primaryKey(),
+    embedding: jsonb('embedding').notNull().$type<number[]>(),
+    metadata: jsonb('metadata').notNull().$type<{
+      connection: string;
+      thread: string;
+      summary: string;
+    }>(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('message_embeddings_connection_idx').on(t.metadata),
+    index('message_embeddings_thread_idx').on(t.metadata),
+    index('message_embeddings_created_at_idx').on(t.createdAt),
+  ],
+);

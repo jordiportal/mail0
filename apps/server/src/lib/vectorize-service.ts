@@ -1,104 +1,62 @@
 /*
- * Servicio wrapper para VECTORIZE y VECTORIZE_MESSAGE que hace las operaciones opcionales
- * Si VECTORIZE no está disponible, simplemente devuelve resultados vacíos
- * en lugar de fallar, permitiendo que la aplicación funcione sin Cloudflare
+ * Servicio wrapper que usa PostgreSQL para almacenar embeddings localmente
+ * Reemplaza Cloudflare VECTORIZE y VECTORIZE_MESSAGE completamente
  */
 
 import { env } from '../env';
+import { getPostgreSQLVectorizeService } from './postgres-vectorize-service';
 
 export class VectorizeService {
-  /**
-   * Verifica si VECTORIZE está disponible
-   */
-  private isAvailable(): boolean {
-    try {
-      // Intentar acceder a VECTORIZE para verificar si está disponible
-      return !!env.VECTORIZE;
-    } catch {
-      return false;
-    }
-  }
+  private postgresService = getPostgreSQLVectorizeService(env);
 
   /**
-   * Verifica si VECTORIZE_MESSAGE está disponible
-   */
-  private isMessageAvailable(): boolean {
-    try {
-      // Intentar acceder a VECTORIZE_MESSAGE para verificar si está disponible
-      return !!env.VECTORIZE_MESSAGE;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Obtiene vectores por IDs (reemplaza env.VECTORIZE.getByIds)
+   * Obtiene vectores por IDs (usa PostgreSQL)
    */
   async getByIds(ids: string[]): Promise<any[]> {
-    if (!this.isAvailable()) {
-      console.warn('[VECTORIZE] VECTORIZE no está disponible, devolviendo array vacío');
-      return [];
-    }
-
     try {
-      return await env.VECTORIZE.getByIds(ids);
+      return await this.postgresService.getByIds(ids);
     } catch (error) {
-      console.warn('[VECTORIZE] Error al obtener vectores por IDs, devolviendo array vacío:', error);
+      console.warn('[VECTORIZE] Error al obtener vectores por IDs:', error);
       return [];
     }
   }
 
   /**
-   * Obtiene vectores de mensajes por IDs (reemplaza env.VECTORIZE_MESSAGE.getByIds)
+   * Obtiene vectores de mensajes por IDs (usa PostgreSQL)
    */
   async getMessageByIds(ids: string[]): Promise<any[]> {
-    if (!this.isMessageAvailable()) {
-      console.warn('[VECTORIZE_MESSAGE] VECTORIZE_MESSAGE no está disponible, devolviendo array vacío');
-      return [];
-    }
-
     try {
-      return await env.VECTORIZE_MESSAGE.getByIds(ids);
+      return await this.postgresService.getMessageByIds(ids);
     } catch (error) {
-      console.warn('[VECTORIZE_MESSAGE] Error al obtener vectores de mensajes por IDs, devolviendo array vacío:', error);
+      console.warn('[VECTORIZE_MESSAGE] Error al obtener vectores de mensajes por IDs:', error);
       return [];
     }
   }
 
   /**
-   * Inserta o actualiza vectores (reemplaza env.VECTORIZE.upsert)
+   * Inserta o actualiza vectores (usa PostgreSQL)
    */
   async upsert(vectors: any[]): Promise<void> {
-    if (!this.isAvailable()) {
-      console.warn('[VECTORIZE] VECTORIZE no está disponible, omitiendo upsert');
-      return;
-    }
-
     try {
-      await env.VECTORIZE.upsert(vectors);
+      await this.postgresService.upsert(vectors);
     } catch (error) {
-      console.warn('[VECTORIZE] Error al hacer upsert de vectores, omitiendo:', error);
+      console.warn('[VECTORIZE] Error al hacer upsert de vectores:', error);
     }
   }
 
   /**
-   * Inserta o actualiza vectores de mensajes (reemplaza env.VECTORIZE_MESSAGE.upsert)
+   * Inserta o actualiza vectores de mensajes (usa PostgreSQL)
    */
   async upsertMessages(vectors: any[]): Promise<void> {
-    if (!this.isMessageAvailable()) {
-      console.warn('[VECTORIZE_MESSAGE] VECTORIZE_MESSAGE no está disponible, omitiendo upsert');
-      return;
-    }
-
     try {
-      await env.VECTORIZE_MESSAGE.upsert(vectors);
+      await this.postgresService.upsertMessages(vectors);
     } catch (error) {
-      console.warn('[VECTORIZE_MESSAGE] Error al hacer upsert de vectores de mensajes, omitiendo:', error);
+      console.warn('[VECTORIZE_MESSAGE] Error al hacer upsert de vectores de mensajes:', error);
     }
   }
 
   /**
-   * Busca vectores similares (reemplaza env.VECTORIZE.query)
+   * Busca vectores similares (usa PostgreSQL con cosine similarity)
    */
   async query(
     vector: number[],
@@ -108,15 +66,10 @@ export class VectorizeService {
       filter?: Record<string, string>;
     },
   ): Promise<{ matches: Array<{ id: string; metadata?: Record<string, any>; score?: number }> }> {
-    if (!this.isAvailable()) {
-      console.warn('[VECTORIZE] VECTORIZE no está disponible, devolviendo resultados vacíos');
-      return { matches: [] };
-    }
-
     try {
-      return await env.VECTORIZE.query(vector, options);
+      return await this.postgresService.query(vector, options);
     } catch (error) {
-      console.warn('[VECTORIZE] Error al buscar vectores, devolviendo resultados vacíos:', error);
+      console.warn('[VECTORIZE] Error al buscar vectores similares:', error);
       return { matches: [] };
     }
   }

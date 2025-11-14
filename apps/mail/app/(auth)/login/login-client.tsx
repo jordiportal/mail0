@@ -140,8 +140,16 @@ function LoginClientContent({ providers, isProd }: LoginClientProps) {
 
           {error && (
             <Alert variant="default" className="border-orange-500/40 bg-orange-500/10">
-              <AlertTitle className="text-orange-400">Error</AlertTitle>
-              <AlertDescription>Failed to log you in. Please try again.</AlertDescription>
+              <AlertTitle className="text-orange-400">Error de autenticación</AlertTitle>
+              <AlertDescription>
+                {error === 'authentication_failed'
+                  ? 'No se pudo completar la autenticación. Por favor, verifica tus credenciales y vuelve a intentar.'
+                  : error === 'missing_email'
+                  ? 'No se pudo obtener tu dirección de correo electrónico. Por favor, asegúrate de haber otorgado los permisos necesarios.'
+                  : error === 'account_already_linked'
+                  ? 'Esta cuenta de Microsoft ya está vinculada a otro usuario. Por favor, inicia sesión con ese usuario o contacta al soporte si necesitas desvincularla.'
+                  : 'No se pudo iniciar sesión. Por favor, intenta de nuevo.'}
+              </AlertDescription>
             </Alert>
           )}
 

@@ -12,7 +12,7 @@ type ToolsReturnType = Awaited<ReturnType<typeof tools>>;
 
 export const aiRouter = new Hono();
 
-aiRouter.get('/', (c) => c.text('Twilio + ElevenLabs + AI Phone System Ready'));
+aiRouter.get('/', (c) => c.text('ElevenLabs + AI Phone System Ready'));
 
 // Add CORS headers for /do/* routes
 aiRouter.use('/do/*', async (c, next) => {

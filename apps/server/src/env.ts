@@ -72,9 +72,6 @@ export type ZeroEnv = {
   AUTUMN_SECRET_KEY: string;
   AI_SYSTEM_PROMPT: string;
   PERPLEXITY_API_KEY: string;
-  TWILIO_ACCOUNT_SID: string;
-  TWILIO_AUTH_TOKEN: string;
-  TWILIO_PHONE_NUMBER: string;
   VITE_PUBLIC_ELEVENLABS_AGENT_ID: string;
   REACT_SCAN: string;
   MICROSOFT_CLIENT_ID: string;
@@ -88,6 +85,7 @@ export type ZeroEnv = {
   FLOWISE_SUMMARY_ENDPOINT: string;
   FLOWISE_EMBEDDING_ENDPOINT: string;
   FLOWISE_RAG_ENDPOINT: string;
+  FLOWISE_API_KEY: string;
   GOOGLE_S_ACCOUNT: string;
   AXIOM_API_TOKEN: string;
   AXIOM_DATASET: string;
@@ -102,9 +100,6 @@ export type ZeroEnv = {
   OTEL_EXPORTER_OTLP_ENDPOINT?: string;
   OTEL_EXPORTER_OTLP_HEADERS?: string;
   OTEL_SERVICE_NAME?: string;
-  DD_API_KEY: string;
-  DD_APP_KEY: string;
-  DD_SITE: string;
 };
 
 const env = _env as ZeroEnv;
