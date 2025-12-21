@@ -281,6 +281,13 @@
       "when": 1761947935084,
       "tag": "0038_shocking_rhodey",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1766343758489,
+      "tag": "0039_stiff_masque",
+      "breakpoints": true
     }
   ]
 }

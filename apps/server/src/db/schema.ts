@@ -323,6 +323,98 @@ export const emailTemplate = createTable(
   ],
 );
 
+// Tablas para sincronización de correos en segundo plano
+export const thread = createTable(
+  'thread',
+  {
+    id: text('id').primaryKey(),
+    connectionId: text('connection_id')
+      .notNull()
+      .references(() => connection.id, { onDelete: 'cascade' }),
+    threadId: text('thread_id').notNull(),
+    providerId: text('provider_id').notNull(),
+    latestSender: jsonb('latest_sender').$type<{
+      name?: string;
+      email: string;
+    }>(),
+    latestReceivedOn: timestamp('latest_received_on'),
+    latestSubject: text('latest_subject'),
+    summary: text('summary'),
+    aiProcessedAt: timestamp('ai_processed_at'),
+    syncedAt: timestamp('synced_at').notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('thread_connection_id_idx').on(t.connectionId),
+    index('thread_thread_id_idx').on(t.threadId),
+    index('thread_latest_received_on_idx').on(t.latestReceivedOn),
+    index('thread_ai_processed_at_idx').on(t.aiProcessedAt),
+    index('thread_synced_at_idx').on(t.syncedAt),
+    unique('thread_connection_thread_unique').on(t.connectionId, t.threadId),
+  ],
+);
+
+export const label = createTable(
+  'label',
+  {
+    id: text('id').primaryKey(),
+    connectionId: text('connection_id')
+      .notNull()
+      .references(() => connection.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    color: text('color'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('label_connection_id_idx').on(t.connectionId),
+    index('label_name_idx').on(t.name),
+    unique('label_connection_name_unique').on(t.connectionId, t.name),
+  ],
+);
+
+export const threadLabel = createTable(
+  'thread_label',
+  {
+    id: text('id').primaryKey(),
+    threadId: text('thread_id')
+      .notNull()
+      .references(() => thread.id, { onDelete: 'cascade' }),
+    labelId: text('label_id')
+      .notNull()
+      .references(() => label.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('thread_label_thread_id_idx').on(t.threadId),
+    index('thread_label_label_id_idx').on(t.labelId),
+    unique('thread_label_thread_label_unique').on(t.threadId, t.labelId),
+  ],
+);
+
+// Estado de sincronización por conexión
+export const syncState = createTable(
+  'sync_state',
+  {
+    id: text('id').primaryKey(),
+    connectionId: text('connection_id')
+      .notNull()
+      .references(() => connection.id, { onDelete: 'cascade' })
+      .unique(),
+    lastSyncAt: timestamp('last_sync_at'),
+    lastHistoryId: text('last_history_id'),
+    syncInProgress: boolean('sync_in_progress').notNull().default(false),
+    totalThreadsSynced: integer('total_threads_synced').notNull().default(0),
+    lastError: text('last_error'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('sync_state_connection_id_idx').on(t.connectionId),
+    index('sync_state_last_sync_at_idx').on(t.lastSyncAt),
+  ],
+);
+
 // Tablas para almacenar embeddings localmente (reemplazan Cloudflare VECTORIZE)
 export const threadEmbeddings = createTable(
   'thread_embeddings',

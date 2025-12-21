@@ -13,7 +13,9 @@
     "db:studio": "drizzle-kit studio",
     "eval": "evalite",
     "eval:dev": "evalite watch",
-    "test:cron": "curl 'http://localhost:8787/cdn-cgi/handler/scheduled'"
+    "test:cron": "curl 'http://localhost:8787/cdn-cgi/handler/scheduled'",
+    "background": "tsx src/background/index.ts",
+    "background:watch": "tsx watch src/background/index.ts"
   },
   "exports": {
     "./trpc": "./src/trpc/index.ts",
@@ -64,6 +66,7 @@
     "effect": "3.16.12",
     "email-addresses": "^5.0.0",
     "google-auth-library": "9.15.1",
+    "googleapis": "169.0.0",
     "he": "^1.2.0",
     "hono": "^4.7.8",
     "hono-agents": "0.0.83",
@@ -72,8 +75,10 @@
     "jsonrepair": "^3.12.0",
     "mime-types": "3.0.1",
     "mimetext": "^3.0.27",
+    "node-cron": "4.2.1",
     "p-retry": "6.2.1",
     "partyserver": "^0.0.71",
+    "pg-boss": "12.5.4",
     "postgres": "3.4.5",
     "react": "catalog:",
     "remeda": "2.21.3",
@@ -91,6 +96,7 @@
     "@effect/language-service": "0.31.1",
     "@types/he": "1.2.3",
     "@types/node": "^22.9.0",
+    "@types/node-cron": "3.0.11",
     "@types/react": "19.1.6",
     "@types/sanitize-html": "2.13.0",
     "@types/uuid": "10.0.0",

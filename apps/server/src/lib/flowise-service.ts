@@ -1,4 +1,13 @@
-import { env } from '../env';
+// Helper para obtener variables de entorno
+// Funciona tanto en Cloudflare Workers (a través de wrangler.jsonc vars)
+// como en Node.js (a través de process.env)
+function getEnvVar(name: string, defaultValue: string = ''): string {
+  // En Node.js, process.env está disponible
+  if (typeof process !== 'undefined' && process.env && process.env[name]) {
+    return process.env[name] as string;
+  }
+  return defaultValue;
+}
 
 /**
  * Flowise Service - Wrapper para interactuar con Flowise API
@@ -12,11 +21,11 @@ export class FlowiseService {
   private apiKey: string;
 
   constructor() {
-    this.baseURL = env.FLOWISE_BASE_URL || 'http://192.168.7.101:3002';
-    this.summaryEndpoint = env.FLOWISE_SUMMARY_ENDPOINT || '74ebdc4c-481c-429c-b528-1c993c5586ca';
-    this.embeddingEndpoint = env.FLOWISE_EMBEDDING_ENDPOINT || '74ebdc4c-481c-429c-b528-1c993c5586ca';
-    this.ragEndpoint = env.FLOWISE_RAG_ENDPOINT || '068a3579-5168-4dd4-ad41-ee3314640daf';
-    this.apiKey = env.FLOWISE_API_KEY || '';
+    this.baseURL = getEnvVar('FLOWISE_BASE_URL', 'http://192.168.7.101:3002');
+    this.summaryEndpoint = getEnvVar('FLOWISE_SUMMARY_ENDPOINT', '74ebdc4c-481c-429c-b528-1c993c5586ca');
+    this.embeddingEndpoint = getEnvVar('FLOWISE_EMBEDDING_ENDPOINT', '74ebdc4c-481c-429c-b528-1c993c5586ca');
+    this.ragEndpoint = getEnvVar('FLOWISE_RAG_ENDPOINT', '068a3579-5168-4dd4-ad41-ee3314640daf');
+    this.apiKey = getEnvVar('FLOWISE_API_KEY', '');
   }
 
   /**
